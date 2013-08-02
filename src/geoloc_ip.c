@@ -1,63 +1,142 @@
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
+
+#include <curl/curl.h>
+
+#include "nxjson.h"
+
+/**
+ *  Here are the functions used to get the location of an ip.
+ * 
+ * 
+ * 
+ * 
+ * */
+
+#define LIST_SIZE 249
 
 
-#include "geoloc_ip.h"
 
-GeoIP          *gi;
+unsigned char * out_buf=NULL;
+size_t idx=0;
+  
 
-static const char * _mk_NA( const char * p ){
- return p ? p : "N/A";
-}
 
-int init_GeoLocIp()
+
+size_t write_data(void *buff,size_t size,size_t mult,void *userdata)
 {
-   gi = GeoIP_open("/home/abdel/projects/traceroute/GeoLiteCity.dat", GEOIP_INDEX_CACHE);
 
-  if (gi == NULL) {
-    fprintf(stderr, "GeopIP:Error opening database\n");
-    return 1;
+  
+  
+  unsigned char * buf=(unsigned char *)buff;
+  size=size*mult;
+  size_t written=0;
+  unsigned char * aux;
+  
+  
+  aux=realloc(out_buf,size+idx+1);
+  if(!aux && size!=0)
+  {
+    //error
+    
+    printf("Error allocatin mem\n");
+    return -1;
+    
   }
-  GeoIP_set_charset(gi, GEOIP_CHARSET_UTF8);
-  return 0;
+  
+  else 
+  {
+    out_buf=aux;
+  }
+  
+  
+  while(written < size)
+  {
+    out_buf[idx]=*buf;
+    
+    buf++;
+    idx++;
+    written++;
+  }
+  
+  out_buf[idx]=0;
+  
+  return written;
 }
 
-
-
-int ip_location(char *host)
+char * get(char *url)
 {
- 
-  
-  GeoIPRecord    *gir;
-  
-  const char     *time_zone = NULL;
-  char          **ret;
- 
-
- 
-
- 
-
-  
-    gir = GeoIP_record_by_name(gi, (const char *) host);
-
-    if (gir != NULL) {
-      ret = GeoIP_range_by_ip(gi, (const char *) host);
-      time_zone = GeoIP_time_zone_by_country_and_region(gir->country_code, gir->region);
-      printf("%s\t%s\t%s\n",
-	     _mk_NA(gir->country_code),
-	     _mk_NA(GeoIP_region_name_by_code(gir->country_code, gir->region)),
-	     _mk_NA(gir->city));
-      GeoIP_range_by_ip_delete(ret);
-      GeoIPRecord_delete(gir);
+  char curl_error[CURL_ERROR_SIZE];
+  CURL * manejador=curl_easy_init();
+  out_buf=NULL;
+  idx=0;
+  curl_easy_setopt(manejador,CURLOPT_URL,url);
+  curl_easy_setopt(manejador,CURLOPT_USERAGENT,"geo-traceroute abdlix.github.io");
+  curl_easy_setopt(manejador,CURLOPT_WRITEFUNCTION,write_data);
+  curl_easy_setopt(manejador,CURLOPT_ERRORBUFFER,curl_error);
+   if( curl_easy_perform(manejador))
+    {
+      printf("Error downloading data:\n%s\n",curl_error);
+      free(out_buf);
+      return NULL;
+      
     }
-    else printf("Location not found\n");
-  
-  
-  
-  return 0;
-
+    
+    return out_buf;
+    
 }
 
-void finish_geolocip()
+
+/**
+ * 
+ *  This function gets the locatio of an ip by asking to : http://ip-api.com/json/
+ *  geting the reponse and parsing it.
+ * 
+ *  @return : an string describing de location example : "United States, California, Mountain View"
+ *            if not found returns the messsage "Not found:{error message }"
+ * 
+ **/
+
+char * ip_location(char *ip)
 {
-  GeoIP_delete(gi);
+  char url[256];
+  char *ret_val;
+  sprintf(url,"http://ip-api.com/json/%s",ip);
+  char *json_str=get(url);
+  char *country,*region,*city;
+  const nx_json  *json_data=nx_json_parse_utf8(json_str);
+
+  nx_json *prop;
+  
+  if( !strcmp(nx_json_get(json_data,"status")->text_value,"success"))
+  {
+    //exito
+    country=nx_json_get(json_data,"country")->text_value;
+    region=nx_json_get(json_data,"regionName")->text_value;
+    city=nx_json_get(json_data,"city")->text_value;
+    
+    ret_val=malloc(6+strlen(country)+strlen(region)+strlen(city));
+    sprintf(ret_val,"%s, %s, %s",country,region,city);
+    
+  }
+  else 
+  {
+    //failure
+    prop=nx_json_get(json_data,"message");
+    ret_val=malloc(12+strlen(prop->text_value));
+    sprintf(ret_val,"Not Found:%s",(prop->text_value));
+    
+  }
+  
+  
+  
+  free(json_str);
+  nx_json_free(json_data);
+  
+  return ret_val;
+  
 }
+
+

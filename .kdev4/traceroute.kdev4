@@ -2,14 +2,17 @@
 BuildItems=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
 
 [CMake]
-BuildDirs=/home/abdel/projects/traceroute/build
+BuildDirs=/home/abdel/projects/geo-traceroute/Build
 CMakeDir=/usr/share/cmake-2.8/Modules
 Current CMake Binary=file:///usr/bin/cmake
-CurrentBuildDir=file:///home/abdel/projects/traceroute/build
+CurrentBuildDir=file:///home/abdel/projects/geo-traceroute/Build
 CurrentBuildType=Debug
 CurrentInstallDir=
 Extra Arguments=
 ProjectRootRelative=./
+
+[MakeBuilder]
+Number Of Jobs=1
 
 [Project]
 VersionControlSupport=kdevgit

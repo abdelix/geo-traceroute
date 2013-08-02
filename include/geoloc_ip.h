@@ -1,7 +1,12 @@
 
-#include "GeoIP.h"
-#include "GeoIPCity.h"
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
 
-static const char * _mk_NA( const char * p );
-int init_GeoLocIp();
+#include <curl/curl.h>
+
+#include "nxjson.h"
+
+
 int ip_location(char *host);
